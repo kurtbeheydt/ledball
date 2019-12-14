@@ -7,7 +7,7 @@
 #define ECHO2     9
 #define STATUS_2  5
 
-#define BASE_DIST 1000 // in ms
+#define BASE_DIST 1500 // in ms
 
 #define LED_PIN   6
 #define LED_COUNT 100
@@ -34,10 +34,9 @@ unsigned long previousMillisPlaying = 0;
 const long ballIntervalStart = (LED_COUNT > 50) ? 40 : 70;
 unsigned long ballInterval = ballIntervalStart;
 
-unsigned long previousMillisPlayer1 = 0;
-unsigned long previousMillisPlayer2 = 0;
-const long playerInterval = 200;
-const int triggerDelay = 2;
+unsigned long previousMillisPlayerCheck = 0;
+const long playerInterval = 100;
+const int triggerDelay = 3;
 
 enum State {STATE_PLAYINGSHOWINGSCORE, STATE_PLAYINGCOUNTDOWN, STATE_PLAYINGGAME, STATE_PLAYINGPOINT, STATE_PLAYINGWINNER, STATE_WAITINGFORPLAYERS };
 State state = STATE_WAITINGFORPLAYERS;
@@ -48,18 +47,18 @@ void setup() {
   pinMode(TRIGGER1, OUTPUT);
   digitalWrite(TRIGGER1, LOW);
   pinMode(ECHO1, INPUT);
+  pinMode(STATUS_1, OUTPUT);
+
   pinMode(TRIGGER2, OUTPUT);
   digitalWrite(TRIGGER2, LOW);
   pinMode(ECHO2, INPUT);
+  pinMode(STATUS_2, OUTPUT);
   
   strip.begin();
   strip.show();
   strip.setBrightness(80);
 
   randomSeed(analogRead(0));
-
-//  Serial.begin(115200);
-//  Serial.println("===== ledball starting =====");
 }
 
 void loop() {
@@ -118,29 +117,25 @@ void loop() {
 }
 
 void checkInput() {
-  int duration;
+  int duration_player1, duration_player2;
 
-  if (currentMillis - previousMillisPlayer1 >= playerInterval) {
-    previousMillisPlayer1 = currentMillis;
+  if (currentMillis - previousMillisPlayerCheck >= playerInterval) {
+    previousMillisPlayerCheck = currentMillis;
     digitalWrite(TRIGGER1, HIGH);
     delayMicroseconds(triggerDelay);
     digitalWrite(TRIGGER1, LOW);
-    duration = pulseIn(ECHO1, HIGH);
-    input_player1 = (duration <= BASE_DIST) ? true : false;
+    duration_player1 = pulseIn(ECHO1, HIGH);
+    input_player1 = (duration_player1 <= BASE_DIST) ? true : false;
     digitalWrite(STATUS_1, input_player1);
     if (!input_player1) {
       newInput_player1 = true;
     }
-  }
-
-  if (currentMillis - previousMillisPlayer2 >= playerInterval) {
-    previousMillisPlayer2 = currentMillis;
     digitalWrite(TRIGGER2, HIGH);
     delayMicroseconds(triggerDelay);
     digitalWrite(TRIGGER2, LOW);
-    duration = pulseIn(ECHO2, HIGH);
+    duration_player2 = pulseIn(ECHO2, HIGH);
+    input_player2 = (duration_player2 <= BASE_DIST) ? true : false;
     digitalWrite(STATUS_2, input_player2);
-    input_player2 = (duration <= BASE_DIST) ? true : false;
     if (!input_player2) {
       newInput_player2 = true;
     }
@@ -165,10 +160,12 @@ void checkNewPlayer() {
   if (input_player1 && newInput_player1) {
     newInput_player1 = false;
     ready_player1 = true;
+    digitalWrite(STATUS_1, LOW);
   }
   if (input_player2 && newInput_player2) {
     newInput_player2 = false;
     ready_player2 = true;
+    digitalWrite(STATUS_2, LOW);
   }
 }
 
@@ -235,7 +232,7 @@ void drawStrip() {
       delay(600);
       strip.clear();
       strip.show();
-      delay(1400);
+      delay(400);
     }
     state = STATE_PLAYINGGAME;
   } else if (state == STATE_PLAYINGGAME) {
@@ -270,7 +267,7 @@ void drawStrip() {
     }
     state = STATE_PLAYINGSHOWINGSCORE;
   } else if (state == STATE_PLAYINGWINNER) {
-    for (int j = 0; j < 8; j++) {
+    for (int j = 0; j < 4; j++) {
       for (i = 0; i < (LED_COUNT/2); i++) {
         int pixelHue = (i * 65536L / (LED_COUNT/2));
         if (scoringPlayer == 1) {
